@@ -1,0 +1,402 @@
+\documentclass[conference, 10pt]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\usepackage{parskip}
+\usepackage{float}
+\usepackage{booktabs}
+
+\begin{document}
+
+\title{Evaluating Bagging Ensembles for Cyberattack Classification}
+
+\author{
+\IEEEauthorblockN{AM. Zenzile}
+\IEEEauthorblockA{Stellenbosch University}
+\IEEEauthorblockA{27403122@sun.ac.za}
+}
+
+\maketitle
+
+\begin{abstract}
+    Ensemble learning is based on the principle that combining multiple learning models can produce better 
+    predictions than relying on a single model. This assignment investigates the effect of ensemble learning 
+    on cyberattack classification, focusing on two questions: whether combining multiple instances of the same 
+    base classifier improves classification performance compared with an individual classifier, and how the choice 
+    of sampling strategy affects ensemble performance. The investigation compares individual K-nearest neighbours 
+    (KNN) and decision tree classifiers with bagging ensembles comprising multiple instances of the respective 
+    classifiers. The effect of sampling strategy is then examined by comparing bootstrap sampling with sampling 
+    without replacement. Results indicate that bagging does not necessarily improve classification performance by 
+    a huge margin, with its benefits depending on the base algorithm, while the choice 
+    of sampling strategy had only a marginal effect.
+\end{abstract}
+
+\begin{IEEEkeywords}
+classification tree, K-nearest neighbours, machine learning, network traffic classification
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Network traffic classification is a supervised machine learning problem in which network connections are assigned 
+to predefined attack categories. Classification algorithms such as K-nearest neighbours (KNN) and decision trees 
+provide approaches to solving this problem. Ensemble learning extends these approaches by combining predictions 
+from multiple models to produce a single prediction. Bagging, or bootstrap aggregating, is an ensemble method 
+that trains multiple instances of a base classifier on different samples of the training data and aggregates 
+their predictions.
+
+Although bagging combines multiple classifiers to improve predictive performance, its effectiveness depends on 
+how the ensemble is constructed. The choice of sampling strategy determines the training data presented to each 
+base classifier and may influence the diversity of the resulting ensemble. Bootstrap sampling draws observations 
+with replacement, whereas sampling without replacement selects observations without duplication within each sample. 
+The resulting differences in training samples raise questions about the effect of sampling strategy on classification 
+performance. Bagging also does not guarantee an improvement over an individual classifier, and the extent of any 
+improvement may differ between learning algorithms.
+
+The aim of this assignment therefore, is to evaluate bagging for cyberattack classification by addressing two questions: (1) 
+Does bagging improve classification performance compared with individual classifiers, and does the effect differ 
+between K-nearest neighbours (KNN) and decision trees? (2) How does bootstrap sampling compare with sampling 
+without replacement in terms of ensemble classification performance? The first question is investigated by 
+comparing individual KNN and decision tree classifiers with bagging ensembles built from the respective base 
+classifiers. The findings suggest that combining multiple classifiers does not necessarily improve classification 
+performance, as the benefits of bagging depend on the base algorithm and remain marginal in this experiment. 
+Although subsampling without replacement generally outperformed bootstrap sampling, the small differences 
+indicate that the choice of sampling strategy also has limited effect on overall performance.
+
+\section{Background}
+
+\subsection{k-Nearest Neighbours}
+
+k-Nearest Neighbours (kNN) is a supervised, non-parametric, similarity-based learning approach. 
+The method retains the labelled training instances and does not construct an explicit parametric 
+model during training \cite{Cover1967}. The parameter (k) specifies the number of nearest training 
+instances considered when classifying a new instance. Classification is performed by identifying the 
+(k) training instances most similar to the new instance and assigning the class supported by majority of the 
+neighbours. Consequently, the value of (k) influences the inductive bias of the classifier. 
+A small value of (k) produces a more locally sensitive classifier, while a large value of (k) 
+produces a smoother classification rule. The choice of (k) therefore affects the balance between 
+sensitivity to individual training instances and generalisation across the dataset \cite{GarciaPedrajas2017}.
+
+The notion of similarity between instances is determined by a distance or similarity measure. 
+The choice of measure depends on the representation and nature of the features being compared. 
+Common measures for numerical data include Euclidean, Manhattan, and Minkowski distance, while 
+measures such as Jaccard similarity are used for appropriate binary representations. Different 
+distance measures can produce different neighbourhood relationships and therefore affect the 
+classification performance of kNN \cite{AbuAlfeilat2019}. During prediction, the feature representation 
+of a new instance is compared with the stored training instances, the nearest instances are identified 
+according to the selected measure, and the class of the new instance is determined from the 
+resulting neighbourhood.
+
+\subsection{Classification Decision Trees}
+
+A classification decision tree also is a supervised, non-parametric learning approach with the 
+distinction that it represents a classification policy or the model as a tree structure. The 
+tree consists of internal nodes that apply tests to input features and leaf nodes that represent 
+predicted classes. A classification decision tree is constructed by recursively partitioning the 
+training data  according to feature values. The resulting root-to-leaf paths represent decision 
+rules that can be used to classify new instances \cite{Singh2014}.
+
+The inductive bias of a decision tree is influenced by the conditions used to control tree growth. 
+Tree depth and stopping conditions, such as the minimum number of instances permitted in a leaf, 
+determine the complexity of the resulting classification rules. Less restrictive conditions allow 
+the tree to represent increasingly detailed patterns in the training data, while more restrictive 
+conditions produce simpler trees. The splitting criterion also influences the structure of the 
+resulting tree. Information gain measures the reduction in class uncertainty produced by a split 
+and forms the basis of the ID3 approach. Gain ratio extends information gain by accounting for the 
+number of possible outcomes of a split and is associated with the C4.5 approach \cite{Singh2014}. 
+The Gini index provides another measure of class impurity and is used as a splitting criterion in 
+classification trees such as CART \cite{SivagamaSundhari2011}. These criteria determine how candidate 
+feature splits are evaluated during tree construction.
+
+\subsection{Bagging as an Ensemble Learning Technique} 
+Ensemble learning on the other end, is not a model or a training algorithm but a machine learning approach 
+that combines the predictions of multiple learning models to produce a single prediction. The underlying 
+principle is that combining the outputs of multiple models can improve predictive performance compared with 
+relying on an individual model. An ensemble consists of a collection of models, referred to as base learners, 
+whose predictions are combined using an aggregation strategy. Ensemble methods differ in how the base learners 
+are constructed and how their predictions are combined. Bagging, or bootstrap aggregating, is one such technique, 
+in which multiple instances of a base learning algorithm are trained, independently, on different samples of the 
+training data before their predictions are aggregated. \cite{DBLP:conf/mcs/Dietterich00}
+
+Bagging constructs an ensemble by sampling observations from the training dataset to create separate training 
+subsets for the base learners. Sampling introduces variation between the training subsets, allowing the base 
+learners to learn from different representations of the original data. Each base learner is trained independently 
+on its assigned subset, and the resulting models are combined during prediction. For classification, majority voting 
+assigns the class predicted by the largest number of base learners. Weighted majority voting assigns weights to the 
+base learners' votes, allowing models with higher assigned weights to contribute more to the final prediction. 
+The predicted class is the one with the greatest total weight. For regression, predictions can be aggregated using 
+the median, which selects the middle value after the individual predictions are ordered. The median is less sensitive 
+to extreme predictions than the arithmetic mean. Breiman's original formulation of bagging uses plurality voting for 
+classification and averaging for numerical predictions, although other aggregation strategies are possible 
+\cite{DBLP:journals/ml/Breiman96b}.
+
+\subsection{Sampling Strategies}
+There are two primary sampling strategies widely used during bagging, bootstrap sampling (with replacement) and 
+subsampling without replacement. 
+
+\textbf{Bootstrap sampling.} Bootstrap sampling creates a training sample by drawing observations from the original dataset with 
+replacement. An observation can therefore appear multiple times, while others are excluded. This introduces variation between the 
+training samples used to train the base learners \cite{DBLP:journals/ml/Breiman96b}. However, duplicate observations can give 
+particular instances additional influence, including incorrectly labelled instances. This is especially an issue with a dataset 
+that has class imbalance or skewed distribution. The effectiveness of bootstrap sampling therefore consequently depends on the dataset's 
+characteristics and the learning algorithm.
+
+\textbf{Subsampling without replacement.} Subsampling on the other hand, selects observations without replacement, ensuring that each 
+observation appears at most once within a sample. Compared with bootstrap sampling, this avoids duplicate observations and provides more 
+distinct training instances at the same sample size. Subsampling can also improve robustness to class-label noise under certain conditions 
+\cite{sabzevari2018two}. However, smaller samples can exclude informative or minority-class observations, potentially reducing classification 
+performance. Its effectiveness therefore depends on the sample size and the dataset's characteristics as well.
+
+\section{Methodology}
+
+The assignment investigates the effectiveness of bagging ensembles for cyberattack classification through two main research questions:
+
+\textbf{RQ1: Effect of bagging.} Does bagging improve classification performance compared with individual classifiers, and does the effect 
+differ between K-nearest neighbours (KNN) and decision trees?
+
+This question is investigated by comparing each individual classifier with a bagging ensemble constructed from the same base learning algorithm. 
+Subsampling is used for both ensembles to maintain a consistent sampling strategy during the comparison.
+
+\textbf{RQ2: Effect of sampling strategy.} How does bootstrap sampling compare with sampling without replacement in terms of ensemble 
+classification performance?
+
+This question is investigated by comparing KNN and decision tree ensembles constructed using the two sampling strategies. 
+The comparison examines whether the choice of sampling strategy affects the classification performance of either ensemble.
+
+\subsection{Dataset}
+The cyberattack dataset used contains 257,673 instances and 44 columns, including 43 descriptive features and 
+the target feature, \texttt{attack\_cat}. The descriptive features comprise 39 numerical features and four nominal 
+features: \texttt{proto}, \texttt{service}, \texttt{state} and \texttt{is\_ftp\_login}. The target represents ten 
+attack categories. The dataset contains missing values exclusively in \texttt{service}, where 141,321 instances 
+(54.85\%) lack a recorded value. The target classes are also imbalanced, with class proportions ranging from 36.09\% 
+for the largest class to 0.07\% for the smallest. A complete description of the dataset features is provided in Appendix 
+\ref{sec: dataset}. These characteristics informed the preprocessing procedure applied before model training and evaluation.
+
+\subsection{Pre-Processing} 
+The dataset was first divided into training and testing sets using an 80:20 stratified split~\cite{DBLP:conf/ijcai/Kohavi95} 
+with a random seed of 42. The \texttt{id} column was removed because it identifies individual records, and does not hold 
+valuable information for identifying a cyberattack category. To reduce feature redundancy, Pearson correlation was used to 
+identify highly correlated feature pairs, and mutual information with the target variable, \texttt{attack\_cat}, was 
+calculated for the features in each pair using scikit-learn's \texttt{mutual\_info\_classif} function. Mutual information 
+measures the statistical dependence between a feature and the target, providing a basis for retaining the feature with the 
+stronger association with the target. Following that, the \texttt{ct\_ftp\_cmd} feature was removed because its mutual 
+information score (0.0053) was lower than that of \texttt{is\_ftp\_login} (0.0080). Similarly, \texttt{sloss} and \texttt{dloss} were 
+removed because their scores (0.2914 and 0.3190, respectively) were lower than those of \texttt{sbytes} (1.0886) and 
+\texttt{dbytes} (0.5895). The \texttt{service} feature contained missing values in 54.85\% of instances; these were 
+replaced with an explicit \texttt{\_\_MISSING\_\_} category to retain the feature without discarding a substantial 
+proportion of the dataset.
+
+The remaining features were transformed according to the requirements of each classifier. For KNN, numerical features 
+were standardised using \texttt{StandardScaler} from scikit-learn~\cite{pedregosa2011scikit}, fitted only on the training 
+data, because KNN relies on distance-based similarity measures that can be dominated by features with larger numerical scales, 
+which is much of a case with the considered dataset. Nominal features were one-hot encoded to represent categories without 
+imposing an artificial ordering. For decision trees, nominal features were also one-hot encoded, while numerical features 
+were left unscaled because tree splits are not sensitive to feature magnitude in the same way as distance-based KNN similarity 
+measures. All transformations were fitted using the training data and then applied to the test data without refitting, 
+preventing information leakage during evaluation.
+
+\subsection{Emperical Process}
+The experiments were conducted in two stages to address the research questions. The first experiment investigated the 
+effect of sampling strategy by comparing bootstrap sampling with subsampling without replacement for KNN and decision 
+tree ensembles. Each ensemble comprised five base learners, with each learner trained on a sample containing 80\% of the 
+training data. The results were compared to identify the better-performing sampling strategy for each ensemble type. 
+The second experiment evaluated the effect of bagging by comparing each individual classifier with its corresponding ensemble, 
+using the sampling strategy selected from the first experiment. This approach allowed the main experiment to use the 
+better-performing sampling configuration identified during the preliminary comparison. Ensemble predictions were determined 
+through majority voting, and the same training and testing partitions were used throughout both experiments to ensure consistent 
+evaluation.
+
+Classification performance was evaluated using accuracy, macro-precision, macro-recall and macro-F1~\cite{DBLP:journals/ipm/SokolovaL09}. 
+Accuracy measures the proportion of correctly classified instances, while precision measures the proportion of 
+positive predictions that are correct for a given class. Recall measures the proportion of instances belonging 
+to a class that are correctly identified. Macro-F1 calculates the F1-score for each class and takes their 
+unweighted mean, giving each class equal importance regardless of its frequency. Macro-precision and macro-recall 
+were also calculated as unweighted means across classes to account for the imbalanced target distribution. 
+The results were recorded for each configuration and examined using metric comparison tables, heatmaps and 
+paired bar charts.
+
+\subsection{Implementation}
+
+The implementation was organised into three main components: preprocessing, model construction and experiment execution. 
+The preprocessing component handled the train-test split and prepared separate feature representations for KNN and decision 
+trees. The model component, implemented in \texttt{models.py}, used scikit-learn implementations of KNN and decision 
+trees~\cite{pedregosa2011scikit} and comprised four classes: \texttt{SamplingStrategies}, which generated bootstrap samples 
+and subsamples without replacement; \texttt{IndividualModels}, which trained the baseline classifiers; \texttt{BaggedKNN}, 
+which constructed KNN ensembles; and \texttt{BaggedDecisionTree}, which constructed decision tree ensembles. Both ensemble 
+classes reused shared sampling, training and majority-voting procedures to maintain a consistent implementation across the 
+two algorithms. An experiment runner, \texttt{runner.py}, acted as the interface between these components, coordinating data 
+preparation, model training, prediction, evaluation and output generation.
+
+The experiments used fixed hyperparameters rather than tuning the models. The individual KNN classifier and each KNN ensemble 
+learner used \(k=20\), while the individual decision tree and each tree in the corresponding ensemble had a maximum depth of 10. 
+Each ensemble contained five base learners, trained on separate samples comprising 80\% of the training partition. The sampling 
+strategy was configurable, allowing the ensembles to use either bootstrap sampling or subsampling without replacement. A random 
+seed of 42 was used to support reproducibility. During prediction, each base learner contributed one class-label vote, and the 
+ensemble returned the class receiving the most votes. The runner calculated accuracy, macro-precision, macro-recall and macro-F1 
+or each configuration, recorded the predictions and metric results in CSV files, and generated heatmaps and paired bar charts in 
+PDF format. Command-line arguments allowed either experiment to be run independently or both to be executed in sequence, with the 
+sampling strategy for the main experiment specified by the user.
+
+\section{Results}
+
+\subsection{Experiment 1: Effect of Sampling Strategy}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\columnwidth]{../output/figures/rq2_heatmap.pdf}
+  \caption{Bagged KNN and decision tree performance under bootstrap sampling and subsampling.}
+  \label{fig:exp1_heatmap}
+\end{figure}
+
+The heatmap shows that subsampling without replacement achieved higher accuracy, macro-precision and macro-recall 
+for both ensemble types. For KNN, macro-F1 increased from 0.4200 to 0.4242, whereas for decision trees it decreased 
+slightly from 0.4876 to 0.4868. Accuracy changed only marginally for both algorithms. These results suggest that 
+subsampling without replacement offers a small performance advantage overall, although its effect on macro-F1 
+depends on the base algorithm.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{../output/figures/rq2_decision_tree_sampling_comparison.pdf}
+    \caption{Decision Tree performance with different sampling techniques.}
+    \label{fig:exp1_dt_sampling}
+\end{figure}
+
+For the decision tree ensemble, subsampling without replacement produced marginally higher accuracy 
+(0.7989 versus 0.7987), macro-precision (0.7251 versus 0.6890) and macro-recall (0.4760 versus 0.4701) 
+than bootstrap sampling. However, bootstrap sampling achieved a slightly higher macro-F1 (0.4876 versus 0.4868). 
+These results suggest that subsampling changes the balance between precision and recall but does not 
+consistently improve all evaluation metrics.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{../output/figures/rq2_knn_sampling_comparison.pdf}
+    \caption{KNN performance on different sampling techniques.}
+    \label{fig:exp1_knn_sampling}
+\end{figure}
+
+For the KNN ensemble, subsampling without replacement outperformed bootstrap sampling across all four metrics, 
+although the differences were small. Accuracy increased from 0.7679 to 0.7696, while macro-F1 increased from 
+0.4200 to 0.4242. This suggests that avoiding duplicate observations within each training sample provides a 
+marginal benefit for KNN in this experiment. However, the limited improvement indicates that the sampling 
+strategy had little influence on the ensemble's overall performance.
+
+\subsection{Experiment 2: Individual Models versus Bagged Ensembles}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{../output/figures/rq1_heatmap.pdf}
+    \caption{Bagged KNN and Classification Tree against individual respective models.}
+    \label{fig:exp2_heatmap}
+\end{figure}
+
+The heatmap shows that bagging did not consistently improve classification performance across the two base algorithms. 
+The KNN ensemble achieved slightly higher accuracy than individual KNN (0.7696 versus 0.7693), but its macro-F1 
+decreased from 0.4270 to 0.4242. In contrast, the decision tree ensemble achieved marginally higher accuracy, 
+macro-recall and macro-F1 than the individual tree, with macro-F1 increasing from 0.4851 to 0.4868. These 
+results suggest that the benefit of bagging depends on the base algorithm and that combining multiple classifiers 
+does not necessarily produce a meaningful performance improvement.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{../output/figures/rq1_knn_comparison.pdf}
+    \caption{KNN ensemble vs individual KNN.}
+    \label{fig:exp2_knn_comp}
+\end{figure}
+
+The individual KNN classifier outperformed the bagged KNN ensemble in macro-precision (0.6227 versus 0.5706), 
+macro-recall (0.4098 versus 0.4070) and macro-F1 (0.4270 versus 0.4242). The ensemble achieved marginally higher 
+accuracy, increasing from 0.7693 to 0.7696. The reductions in macro-precision and macro-F1 suggest that bagging 
+offered no overall benefit to KNN under the selected configuration, despite the slight increase in accuracy.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\columnwidth]{../output/figures/rq1_decision_tree_comparison.pdf}
+    \caption{Classification tree ensemble vs individual classification tree.}
+    \label{fig:exp2_dt_comp}
+\end{figure}
+
+Decision tree ensemble achieved slightly higher accuracy (0.7989 versus 0.7988), macro-precision (0.7251 versus 0.7191), 
+macro-recall (0.4760 versus 0.4678) and macro-F1 (0.4868 versus 0.4851) than the individual decision tree. Although the 
+ensemble improved all four metrics, the differences were small. This suggests that bagging provided a modest improvement 
+for decision trees, rather than the substantial performance gain that might be expected from combining multiple classifiers.
+
+\appendices
+  
+\subsection{Dataset}
+\label{sec: dataset}
+
+% ---------- Part 1 ----------
+\begin{table}[H]
+    \caption{Dataset features (part 1 of 2).}\label{tab:features1}
+    \scriptsize
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabularx}{\columnwidth}{@{}>{\ttfamily}l l >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Name} & \textbf{Type} & \textbf{Description} \\
+    \midrule
+    proto & Nominal & Transaction protocol \\ \addlinespace[4pt]
+    state & Nominal & Indicates to the state and its dependent protocol, e.g. ACC, CLO, CON and (-) (if not used state) \\ \addlinespace[4pt]
+    dur & Float & Record total duration \\ \addlinespace[4pt]
+    sbytes & Integer & Source to destination transaction bytes \\ \addlinespace[4pt]
+    dbytes & Integer & Destination to source transaction bytes \\ \addlinespace[4pt]
+    sttl & Integer & Source to destination time to live value \\ \addlinespace[4pt]
+    dttl & Integer & Destination to source time to live value \\ \addlinespace[4pt]
+    sloss & Integer & Source packets retransmitted or dropped \\ \addlinespace[4pt]
+    dloss & Integer & Destination packets retransmitted or dropped \\ \addlinespace[4pt]
+    service & Nominal & http, ftp, smtp, ssh, dns, ftp-data, irc and (-) if not much used service \\ \addlinespace[4pt]
+    Sload & Float & Source bits per second \\ \addlinespace[4pt]
+    Dload & Float & Destination bits per second \\ \addlinespace[4pt]
+    Spkts & Integer & Source to destination packet count \\ \addlinespace[4pt]
+    Dpkts & Integer & Destination to source packet count \\ \addlinespace[4pt]
+    swin & Integer & Source TCP window advertisement value \\ \addlinespace[4pt]
+    dwin & Integer & Destination TCP window advertisement value \\ \addlinespace[4pt]
+    stcpb & Integer & Source TCP base sequence number \\ \addlinespace[4pt]
+    dtcpb & Integer & Destination TCP base sequence number \\ \addlinespace[4pt]
+    smean & Integer & Mean of the flow packet size transmitted by the src \\ \addlinespace[4pt]
+    dmean & Integer & Mean of the flow packet size transmitted by the dst \\ \addlinespace[4pt]
+    trans\_depth & Integer & Represents the pipelined depth into the connection of http request/response transaction \\ \addlinespace[4pt]
+    response\_body\_len & Integer & Actual uncompressed content size of the data transferred from the servers http service. \\
+    \bottomrule
+    \end{tabularx}
+\end{table}
+    
+% ---------- Part 2 ----------
+\begin{table}[H]
+    \caption{Dataset features (part 2 of 2).}\label{tab:features2}
+    \scriptsize
+    \setlength{\tabcolsep}{3pt}
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabularx}{\columnwidth}{@{}>{\ttfamily}l l >{\raggedright\arraybackslash}X@{}}
+    \toprule
+    \textbf{Name} & \textbf{Type} & \textbf{Description} \\
+    \midrule
+    Sjit & Float & Source jitter (mSec) \\ \addlinespace[4pt]
+    Djit & Float & Destination jitter (mSec) \\ \addlinespace[4pt]
+    sinpkt & Float & Source interpacket arrival time (mSec) \\ \addlinespace[4pt]
+    dinpkt & Float & Destination interpacket arrival time (mSec) \\ \addlinespace[4pt]
+    tcprtt & Float & TCP connection setup round-trip time, the sum of synack and ackdat. \\ \addlinespace[4pt]
+    synack & Float & TCP connection setup time, the time between the SYN and the SYN\_ACK packets. \\ \addlinespace[4pt]
+    ackdat & Float & TCP connection setup time, the time between the SYN\_ACK and the ACK packets. \\ \addlinespace[4pt]
+    is\_sm\_ips\_ports & Binary & If source (1) and destination (3) IP addresses equal and port numbers (2)(4) equal then, this variable takes value 1 else 0 \\ \addlinespace[4pt]
+    ct\_state\_ttl & Integer & No. for each state (6) according to specific range of values for source/destination time to live (10) (11). \\ \addlinespace[4pt]
+    ct\_flw\_http\_mthd & Integer & No. of flows that has methods such as Get and Post in http service. \\ \addlinespace[4pt]
+    is\_ftp\_login & Binary & If the ftp session is accessed by user and password then 1 else 0. \\ \addlinespace[4pt]
+    ct\_ftp\_cmd & Integer & No of flows that has a command in ftp session. \\ \addlinespace[4pt]
+    ct\_srv\_src & Integer & No. of connections that contain the same service (14) and source address (1) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_srv\_dst & Integer & No. of connections that contain the same service (14) and destination address (3) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_dst\_ltm & Integer & No. of connections of the same destination address (3) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_src\_ltm & Integer & No. of connections of the same source address (1) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_src\_dport\_ltm & Integer & No of connections of the same source address (1) and the destination port (4) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_dst\_sport\_ltm & Integer & No of connections of the same destination address (3) and the source port (2) in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    ct\_dst\_src\_ltm & Integer & No of connections of the same source (1) and the destination (3) address in 100 connections according to the last time (26). \\ \addlinespace[4pt]
+    attack\_cat & Nominal & The name of each attack category. In this data set, nine categories e.g. Fuzzers, Analysis, Backdoors, DoS, Exploits, Generic, Reconnaissance, Shellcode and Worms \\
+    \bottomrule
+    \end{tabularx}
+\end{table}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
